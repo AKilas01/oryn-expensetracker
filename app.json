@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Oryn",
+    "slug": "oryn",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yourname.oryn",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to scan receipts",
+        "NSPhotoLibraryUsageDescription": "Used to attach receipt photos",
+        "NSFaceIDUsageDescription": "Used to secure your Oryn data"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0A0F"
+      },
+      "package": "com.yourname.oryn"
+    },
+    "plugins": [
+      "expo-local-authentication",
+      "expo-camera",
+      "expo-image-picker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#9B7FD4"
+        }
+      ]
+    ],
+    "scheme": "oryn",
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
+  }
+}
