@@ -1,0 +1,72 @@
+name: Build Oryn iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Expo CLI
+        run: npm install -g expo-cli eas-cli
+
+      - name: Setup Expo
+        run: echo "EXPO_TOKEN=${{ secrets.EXPO_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Create placeholder assets
+        run: |
+          mkdir -p assets
+          if [ ! -f assets/icon.png ]; then
+            node -e "
+              const fs = require('fs');
+              const buf = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+              fs.writeFileSync('assets/icon.png', buf);
+              fs.writeFileSync('assets/splash.png', buf);
+              fs.writeFileSync('assets/adaptive-icon.png', buf);
+              fs.writeFileSync('assets/notification-icon.png', buf);
+              console.log('Assets created');
+            "
+          fi
+
+      - name: Build iOS IPA with EAS
+        run: |
+          export EAS_NO_VCS=1
+          eas build --platform ios --profile preview --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Download and upload IPA as artifact
+        run: |
+          BUILD_URL=$(eas build:list --platform ios --limit 1 --json --non-interactive | node -e "
+            let data = '';
+            process.stdin.on('data', d => data += d);
+            process.stdin.on('end', () => {
+              const builds = JSON.parse(data);
+              console.log(builds[0]?.artifacts?.buildUrl || '');
+            });
+          ")
+          if [ -n "$BUILD_URL" ]; then
+            curl -L "$BUILD_URL" -o oryn.ipa
+            echo "IPA downloaded successfully"
+          fi
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Upload IPA as GitHub artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oryn-ios
+          path: oryn.ipa
+          retention-days: 7
