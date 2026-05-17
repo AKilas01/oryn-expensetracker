@@ -3,6 +3,9 @@ name: Build Oryn iOS IPA
 on:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: macos-latest
@@ -14,31 +17,27 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install dependencies
         run: npm install
 
-      - name: Install Expo CLI
-        run: npm install -g expo-cli eas-cli
-
-      - name: Setup Expo
-        run: echo "EXPO_TOKEN=${{ secrets.EXPO_TOKEN }}" >> $GITHUB_ENV
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
 
       - name: Create placeholder assets
         run: |
           mkdir -p assets
-          if [ ! -f assets/icon.png ]; then
-            node -e "
-              const fs = require('fs');
-              const buf = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
-              fs.writeFileSync('assets/icon.png', buf);
-              fs.writeFileSync('assets/splash.png', buf);
-              fs.writeFileSync('assets/adaptive-icon.png', buf);
-              fs.writeFileSync('assets/notification-icon.png', buf);
-              console.log('Assets created');
-            "
-          fi
+          node -e "
+            const fs = require('fs');
+            const buf = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+            ['icon','splash','adaptive-icon','notification-icon'].forEach(n => {
+              if (!fs.existsSync('assets/' + n + '.png')) {
+                fs.writeFileSync('assets/' + n + '.png', buf);
+                console.log('Created assets/' + n + '.png');
+              }
+            });
+          "
 
       - name: Build iOS IPA with EAS
         run: |
@@ -47,26 +46,32 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Download and upload IPA as artifact
+      - name: Download IPA
         run: |
           BUILD_URL=$(eas build:list --platform ios --limit 1 --json --non-interactive | node -e "
             let data = '';
             process.stdin.on('data', d => data += d);
             process.stdin.on('end', () => {
-              const builds = JSON.parse(data);
-              console.log(builds[0]?.artifacts?.buildUrl || '');
+              try {
+                const builds = JSON.parse(data);
+                console.log(builds[0]?.artifacts?.buildUrl || '');
+              } catch(e) { console.log(''); }
             });
           ")
+          echo "Build URL: $BUILD_URL"
           if [ -n "$BUILD_URL" ]; then
             curl -L "$BUILD_URL" -o oryn.ipa
-            echo "IPA downloaded successfully"
+            echo "Downloaded IPA successfully"
+          else
+            echo "No build URL found, checking EAS dashboard manually"
           fi
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Upload IPA as GitHub artifact
+      - name: Upload IPA as artifact
         uses: actions/upload-artifact@v4
         with:
           name: oryn-ios
           path: oryn.ipa
+          if-no-files-found: warn
           retention-days: 7
