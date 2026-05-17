@@ -39,39 +39,63 @@ jobs:
             });
           "
 
-      - name: Build iOS IPA with EAS
+      - name: Build iOS with EAS (no credentials needed)
         run: |
           export EAS_NO_VCS=1
-          eas build --platform ios --profile preview --non-interactive
+          eas build --platform ios --profile simulator --non-interactive --no-wait
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Download IPA
+      - name: Wait for build and get URL
         run: |
-          BUILD_URL=$(eas build:list --platform ios --limit 1 --json --non-interactive | node -e "
-            let data = '';
-            process.stdin.on('data', d => data += d);
-            process.stdin.on('end', () => {
+          export EAS_NO_VCS=1
+          echo "Build submitted to EAS. Waiting for completion..."
+          # Wait up to 20 minutes for build
+          for i in {1..40}; do
+            sleep 30
+            STATUS=$(eas build:list --platform ios --limit 1 --json --non-interactive 2>/dev/null | node -e "
+              let d=''; process.stdin.on('data',c=>d+=c);
+              process.stdin.on('end',()=>{
+                try { const b=JSON.parse(d); console.log(b[0]?.status||'unknown'); }
+                catch(e){ console.log('unknown'); }
+              });
+            ")
+            echo "Build status: $STATUS (check $i/40)"
+            if [ "$STATUS" = "FINISHED" ]; then
+              echo "Build complete!"
+              break
+            fi
+            if [ "$STATUS" = "ERRORED" ] || [ "$STATUS" = "CANCELED" ]; then
+              echo "Build failed with status: $STATUS"
+              exit 1
+            fi
+          done
+
+          # Download the build
+          BUILD_URL=$(eas build:list --platform ios --limit 1 --json --non-interactive 2>/dev/null | node -e "
+            let d=''; process.stdin.on('data',c=>d+=c);
+            process.stdin.on('end',()=>{
               try {
-                const builds = JSON.parse(data);
-                console.log(builds[0]?.artifacts?.buildUrl || '');
-              } catch(e) { console.log(''); }
+                const b=JSON.parse(d);
+                console.log(b[0]?.artifacts?.buildUrl||'');
+              } catch(e){ console.log(''); }
             });
           ")
           echo "Build URL: $BUILD_URL"
           if [ -n "$BUILD_URL" ]; then
-            curl -L "$BUILD_URL" -o oryn.ipa
-            echo "Downloaded IPA successfully"
-          else
-            echo "No build URL found, checking EAS dashboard manually"
+            curl -L "$BUILD_URL" -o oryn-app.tar.gz || curl -L "$BUILD_URL" -o oryn.ipa
+            echo "Downloaded successfully"
+            ls -la oryn* 2>/dev/null || echo "No file found"
           fi
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Upload IPA as artifact
+      - name: Upload build as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: oryn-ios
-          path: oryn.ipa
+          name: oryn-ios-build
+          path: |
+            oryn.ipa
+            oryn-app.tar.gz
           if-no-files-found: warn
           retention-days: 7
