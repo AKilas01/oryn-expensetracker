@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Oryn",
-    "slug": "oryn",
+    "slug": "oryn-expense-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.yourname.oryn",
+      "bundleIdentifier": "com.agit.oryn",
       "infoPlist": {
         "NSCameraUsageDescription": "Used to scan receipts",
         "NSPhotoLibraryUsageDescription": "Used to attach receipt photos",
@@ -26,24 +26,16 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0A0F"
       },
-      "package": "com.yourname.oryn"
+      "package": "com.agit.oryn"
     },
     "plugins": [
-      "expo-local-authentication",
       "expo-camera",
-      "expo-image-picker",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#9B7FD4"
-        }
-      ]
+      "expo-image-picker"
     ],
     "scheme": "oryn",
     "extra": {
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "d81ab392-b84d-4945-b50c-06a9fccffc20"
       }
     }
   }
