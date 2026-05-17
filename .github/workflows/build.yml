@@ -25,6 +25,9 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
+      - name: Fix any remaining version mismatches
+        run: npx expo install --fix || true
+
       - name: Create placeholder assets
         run: |
           mkdir -p assets
@@ -34,44 +37,22 @@ jobs:
             ['icon','splash','adaptive-icon','notification-icon'].forEach(n => {
               if (!fs.existsSync('assets/' + n + '.png')) {
                 fs.writeFileSync('assets/' + n + '.png', buf);
-                console.log('Created assets/' + n + '.png');
               }
             });
+            console.log('Assets ready');
           "
 
-      - name: Build iOS with EAS (no credentials needed)
+      - name: Build iOS simulator with EAS
         run: |
           export EAS_NO_VCS=1
-          eas build --platform ios --profile simulator --non-interactive --no-wait
+          eas build --platform ios --profile simulator --non-interactive --wait 2>&1
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Wait for build and get URL
+      - name: Download build artifact
+        if: success()
         run: |
           export EAS_NO_VCS=1
-          echo "Build submitted to EAS. Waiting for completion..."
-          # Wait up to 20 minutes for build
-          for i in {1..40}; do
-            sleep 30
-            STATUS=$(eas build:list --platform ios --limit 1 --json --non-interactive 2>/dev/null | node -e "
-              let d=''; process.stdin.on('data',c=>d+=c);
-              process.stdin.on('end',()=>{
-                try { const b=JSON.parse(d); console.log(b[0]?.status||'unknown'); }
-                catch(e){ console.log('unknown'); }
-              });
-            ")
-            echo "Build status: $STATUS (check $i/40)"
-            if [ "$STATUS" = "FINISHED" ]; then
-              echo "Build complete!"
-              break
-            fi
-            if [ "$STATUS" = "ERRORED" ] || [ "$STATUS" = "CANCELED" ]; then
-              echo "Build failed with status: $STATUS"
-              exit 1
-            fi
-          done
-
-          # Download the build
           BUILD_URL=$(eas build:list --platform ios --limit 1 --json --non-interactive 2>/dev/null | node -e "
             let d=''; process.stdin.on('data',c=>d+=c);
             process.stdin.on('end',()=>{
@@ -83,19 +64,16 @@ jobs:
           ")
           echo "Build URL: $BUILD_URL"
           if [ -n "$BUILD_URL" ]; then
-            curl -L "$BUILD_URL" -o oryn-app.tar.gz || curl -L "$BUILD_URL" -o oryn.ipa
-            echo "Downloaded successfully"
-            ls -la oryn* 2>/dev/null || echo "No file found"
+            curl -L "$BUILD_URL" -o oryn-ios.tar.gz
+            ls -lh oryn-ios.tar.gz
           fi
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Upload build as artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: oryn-ios-build
-          path: |
-            oryn.ipa
-            oryn-app.tar.gz
+          path: oryn-ios.tar.gz
           if-no-files-found: warn
           retention-days: 7
