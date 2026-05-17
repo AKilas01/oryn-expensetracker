@@ -8,6 +8,13 @@
       "distribution": "internal",
       "ios": {
         "simulator": false,
+        "buildConfiguration": "Release",
+        "credentialsSource": "remote"
+      }
+    },
+    "simulator": {
+      "ios": {
+        "simulator": true,
         "buildConfiguration": "Release"
       }
     },

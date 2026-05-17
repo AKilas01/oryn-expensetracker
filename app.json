@@ -18,7 +18,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Used to scan receipts",
         "NSPhotoLibraryUsageDescription": "Used to attach receipt photos",
-        "NSFaceIDUsageDescription": "Used to secure your Oryn data"
+        "NSFaceIDUsageDescription": "Used to secure your Oryn data",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
